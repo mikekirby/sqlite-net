@@ -166,8 +166,7 @@ namespace SQLite
 			});
 		}
 
-        public Task<T> GetAsync<T>(object pk)
-            where T : new()
+        public Task<T> GetAsync<T>(object pk) where T: class
         {
             return Task.Factory.StartNew(() =>
             {
@@ -179,8 +178,7 @@ namespace SQLite
             });
         }
 
-		public Task<T> FindAsync<T> (object pk)
-			where T : new ()
+		public Task<T> FindAsync<T>(object pk) where T: class
 		{
 			return Task.Factory.StartNew (() => {
 				var conn = GetConnection ();
@@ -190,8 +188,7 @@ namespace SQLite
 			});
 		}
 		
-		public Task<T> GetAsync<T> (Expression<Func<T, bool>> predicate)
-            where T : new()
+		public Task<T> GetAsync<T> (Expression<Func<T, bool>> predicate) where T: class
         {
             return Task.Factory.StartNew(() =>
             {
@@ -203,8 +200,7 @@ namespace SQLite
             });
         }
 
-		public Task<T> FindAsync<T> (Expression<Func<T, bool>> predicate)
-			where T : new ()
+		public Task<T> FindAsync<T> (Expression<Func<T, bool>> predicate) where T: class
 		{
 			return Task.Factory.StartNew (() => {
 				var conn = GetConnection ();
@@ -285,8 +281,7 @@ namespace SQLite
             });
         }
 
-		public AsyncTableQuery<T> Table<T> ()
-			where T : new ()
+		public AsyncTableQuery<T> Table<T> () where T : class
 		{
 			//
 			// This isn't async as the underlying connection doesn't go out to the database
@@ -296,7 +291,7 @@ namespace SQLite
 			return new AsyncTableQuery<T> (conn.Table<T> ());
 		}
 
-		public Task<T> ExecuteScalarAsync<T> (string sql, params object[] args)
+		public Task<T> ExecuteScalarAsync<T> (string sql, params object[] args) where T : class
 		{
 			return Task<T>.Factory.StartNew (() => {
 				var conn = GetConnection ();
@@ -307,8 +302,7 @@ namespace SQLite
 			});
 		}
 
-		public Task<List<T>> QueryAsync<T> (string sql, params object[] args)
-			where T : new ()
+		public Task<List<T>> QueryAsync<T> (string sql, params object[] args) where T : class
 		{
 			return Task<List<T>>.Factory.StartNew (() => {
 				var conn = GetConnection ();
@@ -324,7 +318,7 @@ namespace SQLite
 	// execution can still work after a Pool.Reset.
 	//
 	public class AsyncTableQuery<T>
-		where T : new ()
+		where T : class
 	{
 		TableQuery<T> _innerQuery;
 

@@ -119,6 +119,7 @@ namespace SQLite
 	[Flags]
 	public enum SQLiteOpenFlags {
 		ReadOnly = 1, ReadWrite = 2, Create = 4,
+		URI = 0x400,
 		NoMutex = 0x8000, FullMutex = 0x10000,
 		SharedCache = 0x20000, PrivateCache = 0x40000,
 		ProtectionComplete = 0x00100000,
@@ -187,7 +188,7 @@ namespace SQLite
 		/// the storeDateTimeAsTicks parameter.
 		/// </param>
 		public SQLiteConnection (string databasePath, bool storeDateTimeAsTicks = true)
-			: this (databasePath, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create, storeDateTimeAsTicks)
+			: this (databasePath, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create | SQLiteOpenFlags.URI, storeDateTimeAsTicks)
 		{
 		}
 
@@ -705,7 +706,7 @@ namespace SQLite
 		/// <returns>
 		/// An enumerable with one result for each row returned by the query.
 		/// </returns>
-		public List<T> Query<T> (string query, params object[] args) where T : new()
+		public List<T> Query<T> (string query, params object[] args) where T : class
 		{
 			var cmd = CreateCommand (query, args);
 			return cmd.ExecuteQuery<T> ();
@@ -728,7 +729,7 @@ namespace SQLite
 		/// The enumerator will call sqlite3_step on each call to MoveNext, so the database
 		/// connection must remain open for the lifetime of the enumerator.
 		/// </returns>
-		public IEnumerable<T> DeferredQuery<T>(string query, params object[] args) where T : new()
+		public IEnumerable<T> DeferredQuery<T>(string query, params object[] args) where T : class
 		{
 			var cmd = CreateCommand(query, args);
 			return cmd.ExecuteDeferredQuery<T>();
@@ -795,7 +796,7 @@ namespace SQLite
 		/// A queryable object that is able to translate Where, OrderBy, and Take
 		/// queries into native SQL.
 		/// </returns>
-		public TableQuery<T> Table<T> () where T : new()
+		public TableQuery<T> Table<T> () where T : class
 		{
 			return new TableQuery<T> (this);
 		}
@@ -812,7 +813,7 @@ namespace SQLite
 		/// The object with the given primary key. Throws a not found exception
 		/// if the object is not found.
 		/// </returns>
-		public T Get<T> (object pk) where T : new()
+		public T Get<T> (object pk) where T : class
 		{
 			var map = GetMapping (typeof(T));
 			return Query<T> (map.GetByPrimaryKeySql, pk).First ();
@@ -829,7 +830,7 @@ namespace SQLite
         /// The object that matches the given predicate. Throws a not found exception
         /// if the object is not found.
         /// </returns>
-        public T Get<T> (Expression<Func<T, bool>> predicate) where T : new()
+        public T Get<T> (Expression<Func<T, bool>> predicate) where T : class
         {
             return Table<T> ().Where (predicate).First ();
         }
@@ -846,7 +847,7 @@ namespace SQLite
 		/// The object with the given primary key or null
 		/// if the object is not found.
 		/// </returns>
-		public T Find<T> (object pk) where T : new ()
+		public T Find<T> (object pk) where T : class
 		{
 			var map = GetMapping (typeof (T));
 			return Query<T> (map.GetByPrimaryKeySql, pk).FirstOrDefault ();
@@ -883,7 +884,7 @@ namespace SQLite
         /// The object that matches the given predicate or null
         /// if the object is not found.
         /// </returns>
-        public T Find<T> (Expression<Func<T, bool>> predicate) where T : new()
+        public T Find<T> (Expression<Func<T, bool>> predicate) where T : class
         {
             return Table<T> ().Where (predicate).FirstOrDefault ();
         }
@@ -902,7 +903,7 @@ namespace SQLite
 		/// The object that matches the given predicate or null
 		/// if the object is not found.
 		/// </returns>
-		public T FindWithQuery<T> (string query, params object[] args) where T : new()
+		public T FindWithQuery<T> (string query, params object[] args) where T : class
 		{
 			return Query<T> (query, args).FirstOrDefault ();
 		}
@@ -1813,10 +1814,10 @@ namespace SQLite
 			TableName = tableAttr != null ? tableAttr.Name : MappedType.Name;
 
 #if !USE_NEW_REFLECTION_API
-			var props = MappedType.GetProperties (BindingFlags.Public | BindingFlags.Instance | BindingFlags.SetProperty);
+			var props = MappedType.GetProperties (BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.SetProperty);
 #else
 			var props = from p in MappedType.GetRuntimeProperties()
-						where ((p.GetMethod != null && p.GetMethod.IsPublic) || (p.SetMethod != null && p.SetMethod.IsPublic) || (p.GetMethod != null && p.GetMethod.IsStatic) || (p.SetMethod != null && p.SetMethod.IsStatic))
+						where ((p.GetMethod != null) || (p.SetMethod != null))
 						select p;
 #endif
 			var cols = new List<Column> ();
@@ -2006,7 +2007,26 @@ namespace SQLite
 
 			public void SetValue (object obj, object val)
 			{
-				_prop.SetValue (obj, val, null);
+				if ((Nullable.GetUnderlyingType(_prop.PropertyType) ?? _prop.PropertyType).GetTypeInfo().IsEnum) {
+					var enumType = Nullable.GetUnderlyingType(_prop.PropertyType) ?? _prop.PropertyType;
+					var underlyingType = Enum.GetUnderlyingType(enumType);
+
+					if (_prop.PropertyType.GetTypeInfo().IsEnum) {
+						var value = Convert.ChangeType(val, underlyingType);
+						if (!Enum.IsDefined(enumType, value) && !enumType.GetTypeInfo().IsDefined(typeof(FlagsAttribute), false))
+							throw new InvalidCastException(String.Format("Undefined Enum value: {0} for type: {1}", value, enumType));
+
+						_prop.SetValue(obj, Enum.ToObject(enumType, value), null);
+					} else { // Nullable Type support
+						var value = val == null ? val : Convert.ChangeType(val, underlyingType);
+						if (value != null && !Enum.IsDefined(enumType, value) && !enumType.GetTypeInfo().IsDefined(typeof(FlagsAttribute), false))
+							throw new InvalidCastException(String.Format("Undefined Enum value: {0} for type: {1}", value, enumType));
+
+						_prop.SetValue(obj, value == null ? value : Enum.ToObject(enumType, value), null);
+					}
+				} else {
+					_prop.SetValue(obj, val, null);
+				}
 			}
 
 			public object GetValue (object obj)
@@ -2236,7 +2256,7 @@ namespace SQLite
 				}
 			
 				while (SQLite3.Step (stmt) == SQLite3.Result.Row) {
-					var obj = Activator.CreateInstance(map.MappedType);
+					var obj = Activator.CreateInstance(map.MappedType, null);
 					for (int i = 0; i < cols.Length; i++) {
 						if (cols [i] == null)
 							continue;
@@ -2881,7 +2901,7 @@ namespace SQLite
 					CommandText = "?",
 					Value = c.Value
 				};
-			} else if (expr.NodeType == ExpressionType.Convert) {
+			} else if (expr.NodeType == ExpressionType.Convert || expr.NodeType == ExpressionType.ConvertChecked) {
 				var u = (UnaryExpression)expr;
 				var ty = u.Type;
 				var valr = CompileExpr (u.Operand, queryArgs);
