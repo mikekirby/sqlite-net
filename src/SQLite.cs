@@ -1888,7 +1888,7 @@ namespace SQLite
 
 		public Column FindColumn (string columnName)
 		{
-			var exact = Columns.FirstOrDefault (c => c.Name == columnName);
+			var exact = Columns.FirstOrDefault (c => c.Name.ToLower() == columnName.ToLower());
 			return exact;
 		}
 
