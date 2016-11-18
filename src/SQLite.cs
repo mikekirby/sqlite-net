@@ -2256,7 +2256,10 @@ namespace SQLite
 				}
 			
 				while (SQLite3.Step (stmt) == SQLite3.Result.Row) {
-					var obj = Activator.CreateInstance(map.MappedType, null);
+                   var obj = map.MappedType.GetTypeInfo ().DeclaredConstructors
+                                .First (c => c.GetParameters ().Length == 0)
+                                .Invoke(null);
+                
 					for (int i = 0; i < cols.Length; i++) {
 						if (cols [i] == null)
 							continue;
