@@ -119,7 +119,7 @@ namespace SQLite
 	[Flags]
 	public enum SQLiteOpenFlags {
 		ReadOnly = 1, ReadWrite = 2, Create = 4,
-		URI = 0x400,
+		URI = 0x00000040,
 		NoMutex = 0x8000, FullMutex = 0x10000,
 		SharedCache = 0x20000, PrivateCache = 0x40000,
 		ProtectionComplete = 0x00100000,
