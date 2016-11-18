@@ -8,7 +8,7 @@
     <projectUrl>https://github.com/mikekirby/sqlite-net</projectUrl>
     <iconUrl>https://raw.githubusercontent.com/mikekirby/sqlite-net/master/nuget/Logo-low.png</iconUrl>
     <id>insitu.sqlite-net-pcl</id>
-    <title>SQLite-net PCL</title>
+    <title>In-Situ SQLite-net PCL</title>
     <summary>The In-Situ portable class library version of sqlite-net: the easy way to access sqlite.</summary>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>SQLite-net is an open source and light weight library providing easy SQLite database storage for .NET, Mono, and Xamarin applications. This version uses SQLitePCL.raw_basic to provide platform independent versions of SQLite.</description>
